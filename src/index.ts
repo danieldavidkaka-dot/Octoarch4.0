@@ -1,8 +1,15 @@
+/**
+ * Octoarch v4.0
+ * Copyright (c) 2026 Daniel David Barrios
+ * Licensed under GNU General Public License v3.0
+ */
+
 import { OctoServer } from './services/server';
 import { Logger } from './utils/logger';
 import { env } from './config/env';
 import { MemorySystem } from './core/memory';
 import { runDiagnosis } from './utils/diagnose'; 
+import { WhatsAppService } from './tools/whatsapp'; // ✅ Nuevo servicio
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
@@ -26,13 +33,17 @@ async function main() {
   console.log('==================================\n');
 
   try {
+    // 1. Inicializar Memoria
     await MemorySystem.initialize();
     
-    // Iniciar Cerebro
+    // 2. Inicializar WhatsApp (Generará el QR en terminal)
+    WhatsAppService.initialize(); 
+
+    // 3. Iniciar Cerebro (Servidor API)
     const server = new OctoServer(env.PORT);
     server.start();
 
-    // Iniciar Web
+    // 4. Iniciar Web (Frontend)
     const app = express();
     app.use(express.static(frontendPath)); // Servir archivos estáticos
     
