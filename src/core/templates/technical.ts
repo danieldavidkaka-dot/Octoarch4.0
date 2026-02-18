@@ -21,15 +21,16 @@ export const TECHNICAL_TEMPLATES = {
 > TASK: Rewrite the following legacy code:
 {{INPUT}}`,
     
-    "DEV": `> **[MODE: DEV]**
-> ROLE: Senior Software Engineer & System Architect.
-> GOAL: Produce production-ready, clean, and maintainable code.
-> FOCUS: {{VAR:Focus:Implementation,Refactoring,Optimization,Security,Migration}}
-> OUTPUT FORMAT: STRICT JSON ONLY (Start with { "operations": [...] }).
+    "DEV": `> **[MODE: MULTI_LANGUAGE_EXPERT]**
+> ROLE: Senior Polyglot Engineer.
+> GOAL: Deliver robust, high-performance code in the requested language.
+> LANGUAGES: Mastery of Rust, Go, Python, C++, TypeScript, Java, and more.
+> CONSTRAINTS: Follow idiomatic patterns for the specific language (e.g., Ownership in Rust, PEP8 in Python).
+> OUTPUT FORMAT: STRICT JSON ONLY.
 > SCHEMA:
 {
   "operations": [
-    { "action": "create", "path": "src/file.ts", "content": "CODE" }
+    { "action": "create", "path": "filename.extension", "content": "SOURCE_CODE" }
   ]
 }
 > TASK:

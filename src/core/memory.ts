@@ -5,25 +5,34 @@ import { PATHS } from '../config/paths';
 export class MemorySystem {
     
     static async initialize() {
+        // Aseguramos que la carpeta exista
         await fs.mkdir(PATHS.MEMORY, { recursive: true });
+        
         const memPath = path.join(PATHS.MEMORY, 'global_context.md');
         
         try { 
+            // Si el archivo ya existe, NO lo tocamos (respetamos los datos del usuario)
             await fs.access(memPath); 
         } catch { 
-            const initial = `# MEMORIA DE OCTOARCH (v2.0)
-## 👤 PERFIL
-- Rol: Arquitecto de Software Senior.
-- Estilo: Clean Architecture, TypeScript estricto.
+            // 🏭 SI NO EXISTE: Creamos la "Plantilla Maestra"
+            // Es profesional, agnóstica y guía al usuario para que la llene.
+            const initial = `# 🧠 CONTEXTO GLOBAL DEL SISTEMA
+## 👤 ROL ACTIVO
+- **Identidad:** OctoArch (Senior Solutions Architect).
+- **Especialidad:** Clean Code, Scalability, Security First.
+- **Idioma Principal:** Español (Técnico y Profesional).
 
-## 🚀 PROYECTOS ACTIVOS
-### 1. InvoDex (Facturación AI)
-- Stack: AI, Node.js, SAP, Profit Plus.
-- Estado: Diseño de arquitectura.
+## 🚀 PROYECTO ACTUAL: [SIN ASIGNAR]
+*(El usuario debe editar esta sección para definir el proyecto)*
 
-### 2. Plazofy (Fintech)
-- Stack: Node.js, TypeScript.
-- Objetivo: Backend financiero seguro y frontend super hermosos
+- **Nombre:** -
+- **Objetivo Principal:** -
+- **Stack Tecnológico Preferido:** -
+
+## 📝 REGLAS DEL PROYECTO
+1. **Calidad:** Todo código debe ser robusto y tipado (TypeScript por defecto).
+2. **Seguridad:** Nunca exponer credenciales (.env).
+3. **Estilo:** Seguir principios SOLID y DRY.
 `;
             await fs.writeFile(memPath, initial);
         }
