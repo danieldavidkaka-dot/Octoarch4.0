@@ -15,10 +15,9 @@ export class IntelligenceCore {
     constructor() {
         this.conversationMgr = new ConversationManager();
         const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY);
+        // Usamos gemini-2.5-flash porque es excelente y rápido para OCR Multimodal
         const modelName = "gemini-2.5-flash";
         
-        // 🌐 MODIFICACIÓN MAESTRA V2: Manual de Herramientas Estricto
-        // Aquí le enseñamos que 'execute' NO es para navegar, solucionando el bloqueo de seguridad.
         this.model = genAI.getGenerativeModel({ 
             model: modelName,
             systemInstruction: `
@@ -33,18 +32,36 @@ export class IntelligenceCore {
             - Si estás en modo RESEARCHER, solo puedes usar "inspect" y "read". NO intentes usar "execute".
 
             3. REGLA ANTI-ALUCINACIÓN:
-            No inventes noticias ni datos. Si no puedes usar la herramienta, dilo.
+            No inventes noticias ni datos. Si no puedes usar la herramienta, dilo. Si una imagen no es legible, dilo.
             `
         });
         
-        Logger.info(`IntelligenceCore v4.0 inicializado con ${modelName} (Manual de Herramientas + Bucle Cognitivo)`);
+        Logger.info(`IntelligenceCore v4.1 (Multimodal Vision Ready) inicializado con ${modelName}`);
     }
 
-    private async generateWithRetry(prompt: string, retries = 3): Promise<any> {
+    // Función auxiliar para formatear la imagen para Google Gemini
+    private parseBase64Image(dataURI: string) {
+        // Separa "data:image/jpeg;base64" del contenido real
+        const split = dataURI.split(',');
+        if (split.length !== 2) return null;
+        
+        const mimeString = split[0].split(':')[1].split(';')[0];
+        const base64Data = split[1];
+        
+        return {
+            inlineData: {
+                data: base64Data,
+                mimeType: mimeString
+            }
+        };
+    }
+
+    private async generateWithRetry(content: string | any[], retries = 3): Promise<any> {
         let delay = 5000;
         for (let i = 0; i < retries; i++) {
             try {
-                return await this.model.generateContent(prompt);
+                // Ahora puede recibir un string o un Array (Texto + Imagen)
+                return await this.model.generateContent(content);
             } catch (error: any) {
                 if (error.message?.includes('429') || error.message?.includes('Quota')) {
                     Logger.warn(`Rate Limit. Esperando ${delay}ms... (Intento ${i + 1}/${retries})`);
@@ -58,18 +75,32 @@ export class IntelligenceCore {
         throw new Error("❌ Se excedió el límite de reintentos.");
     }
 
-    async generateResponse(userPrompt: string, forcedIntent: string | null = null): Promise<string> {
+    // 🚀 AHORA ACEPTA LA IMAGEN COMO TERCER PARÁMETRO
+    async generateResponse(userPrompt: string, forcedIntent: string | null = null, imageBase64: string | null = null): Promise<string> {
         try {
             const fileList = await FileTool.listFiles('./');
             const memory = await MemorySystem.recall();
             
             const intent = forcedIntent ? forcedIntent : detectIntent(userPrompt);
             const enrichedPrompt = applyTemplate(intent, userPrompt);
-            Logger.info('Intención Final Evaluada', { intent, isForced: !!forcedIntent });
+            Logger.info('Intención Final Evaluada', { intent, isForced: !!forcedIntent, hasImage: !!imageBase64 });
 
             const systemPrompt = buildSystemPrompt(memory, fileList, enrichedPrompt);
 
-            const result = await this.generateWithRetry(systemPrompt);
+            // 👁️ Lógica Multimodal (Visión)
+            let promptContent: any = systemPrompt;
+            if (imageBase64) {
+                const imagePart = this.parseBase64Image(imageBase64);
+                if (imagePart) {
+                    Logger.info('🖼️ Inyectando imagen al prompt de Gemini...');
+                    // Gemini requiere que le pasemos un Array cuando hay imágenes
+                    promptContent = [systemPrompt, imagePart]; 
+                } else {
+                    Logger.warn('⚠️ Imagen recibida pero el formato Base64 es inválido.');
+                }
+            }
+
+            const result = await this.generateWithRetry(promptContent);
             const responseText = result.response.text();
             
             return await this.processExecution(responseText, intent, forcedIntent);
@@ -82,14 +113,11 @@ export class IntelligenceCore {
 
     private async processExecution(responseText: string, intent: string, forcedIntent: string | null): Promise<string> {
         try {
-            // 🧹 LIMPIEZA PROFUNDA DE JSON (ALGORITMO MATEMÁTICO)
             const firstBrace = responseText.indexOf('{');
             const lastBrace = responseText.lastIndexOf('}');
 
-            // Si no encontramos llaves válidas, asumimos que es charla normal
             if (firstBrace === -1 || lastBrace === -1) return responseText;
 
-            // Extraemos solo lo que está entre las llaves ignorando basura externa
             const cleanJson = responseText.substring(firstBrace, lastBrace + 1);
 
             let parsed: any;
@@ -99,7 +127,6 @@ export class IntelligenceCore {
                 return responseText;
             }
             
-            // Si no hay operaciones, devolvemos el pensamiento
             if (!parsed.operations || !Array.isArray(parsed.operations)) return parsed.thought || responseText;
 
             let toolOutputs = ""; 
@@ -107,8 +134,6 @@ export class IntelligenceCore {
             const activeRole = forcedIntent || 'Auto';
 
             for (const op of parsed.operations) {
-                
-                // 🛡️ RBAC: Validación de Seguridad
                 let isAllowed = true;
                 let denyReason = "";
 
@@ -129,7 +154,6 @@ export class IntelligenceCore {
                     continue; 
                 }
 
-                // Ejecución Real
                 try {
                     if (op.action === 'read' && op.path) {
                         const content = await FileTool.readFile(op.path);
@@ -147,7 +171,6 @@ export class IntelligenceCore {
                         operationsPerformed = true;
                     }
                     else if (op.action === 'inspect' && op.url) {
-                        // Importamos dinámicamente para evitar ciclos
                         const { BrowserTool } = require('../tools/browser');
                         const report = await BrowserTool.inspect(op.url);
                         toolOutputs += `\n--- RESULTADO DE NAVEGADOR (${op.url}) ---\n${report}\n-----------------------------------\n`;
@@ -158,11 +181,8 @@ export class IntelligenceCore {
                 }
             }
 
-            // 🔄 BUCLE COGNITIVO (LOOP)
-            // Si hubo operaciones exitosas, reinyectamos los resultados al cerebro
             if (operationsPerformed) {
                 Logger.info("🔄 Iniciando Bucle Cognitivo para interpretar resultados...");
-                
                 const loopPrompt = `
                 [CONTEXTO]
                 Actúas como: ${intent}.
@@ -182,7 +202,6 @@ export class IntelligenceCore {
                 return finalResponse.response.text();
             }
 
-            // Si falló todo o fue bloqueado, devolvemos el log de errores
             return `**Octoarch (${intent}):**\n${parsed.thought || ''}\n\n${toolOutputs}`;
 
         } catch (e) {

@@ -14,3 +14,6 @@ workspace/auth_wa/
 
 # 📦 Ignorar el frontend para mantener el repositorio del backend liviano
 frontend/
+
+# Ignorar arch
+arch-extension2-main/
