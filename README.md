@@ -2,7 +2,9 @@
 
 [![AI for Good](https://img.shields.io/badge/AI-Make_the_world_a_better_place-success)](#) [![Free Venezuela](https://img.shields.io/badge/Free-Venezuela_🇻🇪_|_Free_the_world_❤️-ff0000)](#)
 
-**OctoArch** es un motor de orquestación autónoma local impulsado por **Google Gemini 2.5 Flash**. Diseñado para operar como un "Sistema Operativo Cognitivo", permite la administración de servidores, automatización de tareas y navegación web compleja a través de interfaces de lenguaje natural (Web Terminal y WhatsApp).
+![Captura de OctoArch en funcionamiento](assets/mi-imagen-genial.png)
+
+**OctoArch** es un motor de orquestación autónoma local... impulsado por **Google Gemini 2.5 Flash**. Diseñado para operar como un "Sistema Operativo Cognitivo", permite la administración de servidores, automatización de tareas y navegación web compleja a través de interfaces de lenguaje natural (Web Terminal y WhatsApp).
 
 ## 🚀 Estado Actual (v4.2 - Enterprise Stable)
 
