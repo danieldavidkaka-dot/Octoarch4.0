@@ -1,13 +1,15 @@
-import puppeteer, { type ConsoleMessage, type HTTPResponse } from 'puppeteer';
+import puppeteer, { Browser, type ConsoleMessage, type HTTPResponse } from 'puppeteer';
 import { Logger } from '../utils/logger';
 
 export class BrowserTool {
-    static async inspect(url: string): Promise<string> {
-        Logger.info(`🌎 Navegando a: ${url}`);
-        
-        try {
-            // Lanzamos un navegador oculto optimizado
-            const browser = await puppeteer.launch({ 
+    // 🏆 SINGLETON: La instancia maestra del navegador
+    private static browserInstance: Browser | null = null;
+
+    // Método para obtener o encender el navegador maestro
+    private static async getBrowser(): Promise<Browser> {
+        if (!this.browserInstance) {
+            Logger.info('🌐 Iniciando Browser Pool (Puppeteer Maestro en segundo plano)...');
+            this.browserInstance = await puppeteer.launch({ 
                 headless: true, 
                 args: [
                     '--no-sandbox',
@@ -17,8 +19,20 @@ export class BrowserTool {
                     '--disable-gpu'
                 ] 
             });
+        }
+        return this.browserInstance;
+    }
+
+    static async inspect(url: string): Promise<string> {
+        Logger.info(`🌎 Navegando a: ${url}`);
+        let page;
+        
+        try {
+            // Usamos la instancia global compartida
+            const browser = await this.getBrowser();
             
-            const page = await browser.newPage();
+            // Solo abrimos una pestaña nueva (súper rápido)
+            page = await browser.newPage();
             
             // 🕵️ EVASIÓN: Disfrazamos a Puppeteer como un navegador real para pasar bloqueos Anti-Bot
             await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
@@ -48,7 +62,8 @@ export class BrowserTool {
             // Extraer texto limpio (inner Text es más eficiente que HTML)
             const bodyHTML = await page.evaluate(() => document.body.innerText);
             
-            await browser.close();
+            // ❌ IMPORTANTE: Cerramos solo la pestaña, NO el navegador
+            await page.close();
 
             const report = [
                 `--- REPORTE DE INSPECCIÓN (${url}) ---`,
@@ -61,6 +76,8 @@ export class BrowserTool {
             return report;
 
         } catch (error: any) {
+            // Si algo falla, intentamos cerrar la pestaña huérfana para no tener fugas de RAM
+            if (page) await page.close().catch(() => {});
             return `❌ Error navegando: ${error.message}`;
         }
     }
